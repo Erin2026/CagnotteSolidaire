@@ -1,0 +1,121 @@
+@page "/dashboard-participant"
+@using CagnotteSolidaire.Web.Services
+@using CagnotteSolidaire.Web.Models
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+
+<PageTitle>Dashboard Participant - Cagnotte Solidaire</PageTitle>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>?? Mon Dashboard Participant</h2>
+        <button @onclick="Logout" class="btn btn-outline-danger">Déconnexion</button>
+    </div>
+
+    @if (currentUser != null)
+    {
+        <div class="alert alert-info">
+            Bienvenue <strong>@currentUser.NomComplet</strong> (@currentUser.Email)
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5>?? Participer à une cagnotte</h5>
+                </div>
+                <div class="card-body">
+                    <p>Pour participer à une cagnotte, vous devez connaître son <strong>identifiant unique (GUID)</strong>.</p>
+                    
+                    <div class="mb-3">
+                        <label for="cagnotteId" class="form-label">ID de la cagnotte</label>
+                        <input type="text" id="cagnotteId" class="form-control" @bind="cagnotteIdInput" 
+                               placeholder="00000000-0000-0000-0000-000000000000" />
+                    </div>
+
+                    <button @onclick="GoToCagnotte" class="btn btn-primary">Voir la cagnotte</button>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5>?? Comment ça marche ?</h5>
+                </div>
+                <div class="card-body">
+                    <ol>
+                        <li>Une association vous communique l'ID de sa cagnotte</li>
+                        <li>Vous saisissez cet ID dans le champ ci-dessus</li>
+                        <li>Vous consultez les détails de la cagnotte</li>
+                        <li>Vous indiquez le montant que vous souhaitez donner</li>
+                        <li>L'association sera notifiée de votre intention de don</li>
+                    </ol>
+
+                    <div class="alert alert-warning">
+                        <strong>Note :</strong> Il s'agit d'une intention de don (promesse). 
+                        Aucun paiement n'est effectué via la plateforme.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>?? Mes statistiques</h5>
+                </div>
+                <div class="card-body text-center">
+                    <h3>0</h3>
+                    <p class="text-muted">Cagnottes soutenues</p>
+                    
+                    <hr />
+
+                    <h3>0€</h3>
+                    <p class="text-muted">Montant total promis</p>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>?? Liens rapides</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="/" class="btn btn-outline-primary">Accueil</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginResponse? currentUser;
+    private string cagnotteIdInput = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = await AuthService.GetCurrentUserAsync();
+        
+        if (currentUser == null || currentUser.Role != "Participant")
+        {
+            Navigation.NavigateTo("/login");
+        }
+    }
+
+    private void GoToCagnotte()
+    {
+        if (Guid.TryParse(cagnotteIdInput, out Guid cagnotteId))
+        {
+            Navigation.NavigateTo($"/cagnotte/{cagnotteId}");
+        }
+    }
+
+    private async Task Logout()
+    {
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/");
+    }
+}

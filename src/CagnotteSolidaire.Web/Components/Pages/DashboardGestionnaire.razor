@@ -1,0 +1,239 @@
+@page "/dashboard-gestionnaire"
+@using CagnotteSolidaire.Web.Services
+@using CagnotteSolidaire.Web.Models
+@inject AuthService AuthService
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+
+<PageTitle>Dashboard Gestionnaire - Cagnotte Solidaire</PageTitle>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>?? Mes Cagnottes</h2>
+        <div>
+            <a href="/create-cagnotte" class="btn btn-primary me-2">? Créer une cagnotte</a>
+            <button @onclick="Logout" class="btn btn-outline-danger">Déconnexion</button>
+        </div>
+    </div>
+
+    @if (currentUser != null)
+    {
+        <div class="alert alert-info">
+            Bienvenue <strong>@currentUser.NomComplet</strong> (@currentUser.Email)
+        </div>
+    }
+
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Chargement...</span>
+            </div>
+        </div>
+    }
+    else if (errorMessage != null)
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+    else if (cagnottes == null || !cagnottes.Any())
+    {
+        <div class="alert alert-warning">
+            Vous n'avez pas encore créé de cagnotte. 
+            <a href="/create-cagnotte" class="alert-link">Créez votre première cagnotte !</a>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var cagnotte in cagnottes)
+            {
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        @if (!string.IsNullOrEmpty(cagnotte.ImageUrl))
+                        {
+                            <img src="@cagnotte.ImageUrl" class="card-img-top" alt="@cagnotte.Nom" style="height: 200px; object-fit: cover;">
+                        }
+                        <div class="card-body">
+                            <h5 class="card-title">@cagnotte.Nom</h5>
+                            <p class="card-text">@cagnotte.Description</p>
+                            
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>Progression</span>
+                                    <span>@cagnotte.MontantActuel€ / @cagnotte.ObjectifFinancier€</span>
+                                </div>
+                                <div class="progress">
+                                    <div class="progress-bar @GetProgressBarClass(cagnotte)" 
+                                         role="progressbar" 
+                                         style="width: @GetProgressPercentage(cagnotte)%"
+                                         aria-valuenow="@cagnotte.MontantActuel" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="@cagnotte.ObjectifFinancier">
+                                        @GetProgressPercentage(cagnotte)%
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-2">
+                                <span class="badge bg-@GetStatusBadgeClass(cagnotte.Statut)">@GetStatusLabel(cagnotte.Statut)</span>
+                                <span class="badge bg-secondary">@cagnotte.NombreParticipants participant(s)</span>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <a href="/cagnotte/@cagnotte.Id" class="btn btn-outline-primary btn-sm">Voir détails</a>
+                                
+                                @if (cagnotte.Statut == "Active")
+                                {
+                                    @if (cagnotte.MontantActuel >= cagnotte.ObjectifFinancier)
+                                    {
+                                        <button @onclick="() => CloseCagnotte(cagnotte.Id)" class="btn btn-success btn-sm">
+                                            Clôturer (Objectif atteint)
+                                        </button>
+                                    }
+                                    <button @onclick="() => CancelCagnotte(cagnotte.Id)" class="btn btn-warning btn-sm">
+                                        Annuler la cagnotte
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                        <div class="card-footer text-muted">
+                            Créée le @cagnotte.DateCreation.ToShortDateString()
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private LoginResponse? currentUser;
+    private List<CagnotteDto>? cagnottes;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = await AuthService.GetCurrentUserAsync();
+        
+        if (currentUser == null || currentUser.Role != "Gestionnaire")
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        await LoadCagnottes();
+    }
+
+    private async Task LoadCagnottes()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            cagnottes = await Http.GetFromJsonAsync<List<CagnotteDto>>($"api/Cagnottes/gestionnaire");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erreur lors du chargement : {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task CloseCagnotte(Guid cagnotteId)
+    {
+        if (!await JSRuntime.InvokeAsync<bool>("confirm", "Êtes-vous sûr de vouloir clôturer cette cagnotte ? Un email sera envoyé aux participants."))
+            return;
+
+        try
+        {
+            var response = await Http.PostAsync($"api/Cagnottes/{cagnotteId}/close", null);
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadCagnottes();
+            }
+            else
+            {
+                errorMessage = "Erreur lors de la clôture de la cagnotte";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erreur : {ex.Message}";
+        }
+    }
+
+    private async Task CancelCagnotte(Guid cagnotteId)
+    {
+        if (!await JSRuntime.InvokeAsync<bool>("confirm", "Êtes-vous sûr de vouloir annuler cette cagnotte ? Un email sera envoyé aux participants."))
+            return;
+
+        try
+        {
+            var response = await Http.PostAsync($"api/Cagnottes/{cagnotteId}/cancel", null);
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadCagnottes();
+            }
+            else
+            {
+                errorMessage = "Erreur lors de l'annulation de la cagnotte";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erreur : {ex.Message}";
+        }
+    }
+
+    private async Task Logout()
+    {
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/");
+    }
+
+    private int GetProgressPercentage(CagnotteDto cagnotte)
+    {
+        if (cagnotte.ObjectifFinancier == 0) return 0;
+        return (int)((cagnotte.MontantActuel / cagnotte.ObjectifFinancier) * 100);
+    }
+
+    private string GetProgressBarClass(CagnotteDto cagnotte)
+    {
+        var percentage = GetProgressPercentage(cagnotte);
+        if (percentage >= 100) return "bg-success";
+        if (percentage >= 75) return "bg-info";
+        if (percentage >= 50) return "bg-warning";
+        return "bg-danger";
+    }
+
+    private string GetStatusBadgeClass(string statut)
+    {
+        return statut switch
+        {
+            "Active" => "success",
+            "Cloturee" => "primary",
+            "Annulee" => "danger",
+            _ => "secondary"
+        };
+    }
+
+    private string GetStatusLabel(string statut)
+    {
+        return statut switch
+        {
+            "Active" => "En cours",
+            "Cloturee" => "Clôturée",
+            "Annulee" => "Annulée",
+            _ => statut
+        };
+    }
+}
+

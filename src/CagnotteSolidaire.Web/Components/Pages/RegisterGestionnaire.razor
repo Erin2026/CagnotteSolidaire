@@ -1,0 +1,244 @@
+@page "/register-gestionnaire"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Inscription Gestionnaire - Cagnotte Solidaire</PageTitle>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header">
+                    <h3>?? Inscription Gestionnaire (Association)</h3>
+                </div>
+                <div class="card-body">
+                    @if (currentStep == 1)
+                    {
+                        <h5>Étape 1/2 : Rechercher votre association</h5>
+                        <p class="text-muted">Recherchez votre association dans le département 68 via l'API du Journal Officiel</p>
+
+                        <div class="mb-3">
+                            <label for="search" class="form-label">Nom de l'association ou SIREN</label>
+                            <div class="input-group">
+                                <input type="text" id="search" class="form-control" @bind="searchTerm" 
+                                       placeholder="Saisissez le nom de votre association..." />
+                                <button @onclick="SearchAssociations" class="btn btn-primary" disabled="@isSearching">
+                                    @if (isSearching)
+                                    {
+                                        <span class="spinner-border spinner-border-sm"></span>
+                                    }
+                                    else
+                                    {
+                                        <span>?? Rechercher</span>
+                                    }
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(searchError))
+                        {
+                            <div class="alert alert-danger">@searchError</div>
+                        }
+
+                        @if (associations != null && associations.Any())
+                        {
+                            <div class="list-group">
+                                @foreach (var assoc in associations)
+                                {
+                                    <a @onclick="() => SelectAssociation(assoc)" class="list-group-item list-group-item-action" style="cursor: pointer;">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h6 class="mb-1">@assoc.Nom</h6>
+                                            <small>@assoc.Ville</small>
+                                        </div>
+                                        <p class="mb-1">
+                                            <small>SIREN: @assoc.SIREN | @assoc.Adresse, @assoc.CodePostal @assoc.Ville</small>
+                                        </p>
+                                    </a>
+                                }
+                            </div>
+                        }
+                        else if (searchCompleted)
+                        {
+                            <div class="alert alert-info">Aucune association trouvée. Essayez avec un autre terme de recherche.</div>
+                        }
+                    }
+                    else
+                    {
+                        <h5>Étape 2/2 : Vos informations personnelles</h5>
+                        
+                        @if (selectedAssociation != null)
+                        {
+                            <div class="alert alert-success">
+                                <strong>Association sélectionnée :</strong> @selectedAssociation.Nom<br />
+                                <small>@selectedAssociation.Adresse, @selectedAssociation.CodePostal @selectedAssociation.Ville</small>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(registerError))
+                        {
+                            <div class="alert alert-danger">@registerError</div>
+                        }
+
+                        <EditForm Model="@userModel" OnValidSubmit="@HandleRegister">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="prenom" class="form-label">Prénom *</label>
+                                    <InputText id="prenom" class="form-control" @bind-Value="userModel.Prenom" />
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="nom" class="form-label">Nom *</label>
+                                    <InputText id="nom" class="form-control" @bind-Value="userModel.Nom" />
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email *</label>
+                                <InputText id="email" type="email" class="form-control" @bind-Value="userModel.Email" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Mot de passe *</label>
+                                <InputText id="password" type="password" class="form-control" @bind-Value="userModel.Password" />
+                                <div class="form-text">Minimum 8 caractères, 1 majuscule, 1 minuscule, 1 chiffre</div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-success btn-lg" disabled="@isRegistering">
+                                    @if (isRegistering)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2"></span>
+                                    }
+                                    S'inscrire
+                                </button>
+                                <button @onclick="BackToSearch" type="button" class="btn btn-outline-secondary">
+                                    ? Retour à la recherche
+                                </button>
+                            </div>
+                        </EditForm>
+                    }
+
+                    <hr />
+                    <div class="text-center">
+                        <p>Déjà inscrit ? <a href="/login">Se connecter</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private int currentStep = 1;
+    private string searchTerm = string.Empty;
+    private bool isSearching = false;
+    private bool searchCompleted = false;
+    private bool isRegistering = false;
+    private string? searchError;
+    private string? registerError;
+
+    private List<AssociationSearchDto>? associations;
+    private AssociationSearchDto? selectedAssociation;
+    private UserRegistrationModel userModel = new();
+
+    private async Task SearchAssociations()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm)) return;
+
+        isSearching = true;
+        searchError = null;
+        searchCompleted = false;
+
+        try
+        {
+            associations = await Http.GetFromJsonAsync<List<AssociationSearchDto>>(
+                $"api/Associations/search?searchTerm={Uri.EscapeDataString(searchTerm)}&departement=68");
+            searchCompleted = true;
+        }
+        catch (Exception ex)
+        {
+            searchError = $"Erreur lors de la recherche : {ex.Message}";
+        }
+        finally
+        {
+            isSearching = false;
+        }
+    }
+
+    private void SelectAssociation(AssociationSearchDto association)
+    {
+        selectedAssociation = association;
+        currentStep = 2;
+    }
+
+    private void BackToSearch()
+    {
+        currentStep = 1;
+        selectedAssociation = null;
+    }
+
+    private async Task HandleRegister()
+    {
+        if (selectedAssociation == null) return;
+
+        isRegistering = true;
+        registerError = null;
+
+        try
+        {
+            var request = new
+            {
+                email = userModel.Email,
+                password = userModel.Password,
+                nom = userModel.Nom,
+                prenom = userModel.Prenom,
+                associationNom = selectedAssociation.Nom,
+                siren = selectedAssociation.SIREN,
+                rna = selectedAssociation.RNA,
+                adresse = selectedAssociation.Adresse,
+                codePostal = selectedAssociation.CodePostal,
+                ville = selectedAssociation.Ville,
+                departement = "68"
+            };
+
+            var response = await Http.PostAsJsonAsync("api/Auth/register/gestionnaire", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                registerError = $"Erreur lors de l'inscription : {error}";
+            }
+        }
+        catch (Exception ex)
+        {
+            registerError = $"Erreur : {ex.Message}";
+        }
+        finally
+        {
+            isRegistering = false;
+        }
+    }
+
+    private class AssociationSearchDto
+    {
+        public string Nom { get; set; } = string.Empty;
+        public string? SIREN { get; set; }
+        public string? RNA { get; set; }
+        public string? Ville { get; set; }
+        public string? CodePostal { get; set; }
+        public string? Adresse { get; set; }
+    }
+
+    private class UserRegistrationModel
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string Nom { get; set; } = string.Empty;
+        public string Prenom { get; set; } = string.Empty;
+    }
+}

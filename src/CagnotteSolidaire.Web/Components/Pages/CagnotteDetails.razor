@@ -1,0 +1,237 @@
+@page "/cagnotte/{Id:guid}"
+@using CagnotteSolidaire.Web.Models
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Détails cagnotte - Cagnotte Solidaire</PageTitle>
+
+<div class="container mt-4">
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Chargement...</span>
+            </div>
+        </div>
+    }
+    else if (cagnotte == null)
+    {
+        <div class="alert alert-warning">Cagnotte introuvable</div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    @if (!string.IsNullOrEmpty(cagnotte.ImageUrl))
+                    {
+                        <img src="@cagnotte.ImageUrl" class="card-img-top" alt="@cagnotte.Nom" style="max-height: 400px; object-fit: cover;">
+                    }
+                    <div class="card-body">
+                        <h2 class="card-title">@cagnotte.Nom</h2>
+                        <p class="text-muted">Par @cagnotte.NomAssociation</p>
+                        
+                        <span class="badge bg-@GetStatusBadgeClass(cagnotte.Statut) mb-3">@GetStatusLabel(cagnotte.Statut)</span>
+
+                        <h5>Description</h5>
+                        <p class="card-text">@cagnotte.Description</p>
+
+                        <hr />
+
+                        <h5>Progression</h5>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span><strong>@cagnotte.MontantActuel€</strong> collectés</span>
+                                <span>Objectif: <strong>@cagnotte.ObjectifFinancier€</strong></span>
+                            </div>
+                            <div class="progress" style="height: 25px;">
+                                <div class="progress-bar @GetProgressBarClass(cagnotte)" 
+                                     role="progressbar" 
+                                     style="width: @GetProgressPercentage(cagnotte)%">
+                                    @GetProgressPercentage(cagnotte)%
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row text-center mt-4">
+                            <div class="col-6">
+                                <h3>@cagnotte.NombreParticipants</h3>
+                                <p class="text-muted">Participants</p>
+                            </div>
+                            <div class="col-6">
+                                <h3>@GetProgressPercentage(cagnotte)%</h3>
+                                <p class="text-muted">Complété</p>
+                            </div>
+                        </div>
+
+                        @if (cagnotte.Statut == "Active")
+                        {
+                            <div class="d-grid gap-2 mt-4">
+                                <a href="/participate/@cagnotte.Id" class="btn btn-primary btn-lg">
+                                    ?? Participer à cette cagnotte
+                                </a>
+                            </div>
+                        }
+                    </div>
+                    <div class="card-footer text-muted">
+                        Créée le @cagnotte.DateCreation.ToShortDateString()
+                    </div>
+                </div>
+
+                @if (participants != null && participants.Any())
+                {
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>?? Participants (@participants.Count)</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="list-group">
+                                @foreach (var participant in participants)
+                                {
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>@participant.NomComplet</strong>
+                                            @if (!string.IsNullOrEmpty(participant.Commentaire))
+                                            {
+                                                <p class="mb-0 text-muted small">@participant.Commentaire</p>
+                                            }
+                                            <small class="text-muted">@participant.DateParticipation.ToShortDateString()</small>
+                                        </div>
+                                        <span class="badge bg-primary rounded-pill">@participant.Montant€</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>?? Informations</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row">
+                            <dt class="col-sm-6">ID Cagnotte</dt>
+                            <dd class="col-sm-6"><small>@cagnotte.Id</small></dd>
+
+                            <dt class="col-sm-6">Statut</dt>
+                            <dd class="col-sm-6">
+                                <span class="badge bg-@GetStatusBadgeClass(cagnotte.Statut)">
+                                    @GetStatusLabel(cagnotte.Statut)
+                                </span>
+                            </dd>
+
+                            <dt class="col-sm-6">Participants</dt>
+                            <dd class="col-sm-6">@cagnotte.NombreParticipants</dd>
+
+                            <dt class="col-sm-6">Objectif</dt>
+                            <dd class="col-sm-6">@cagnotte.ObjectifFinancier€</dd>
+
+                            <dt class="col-sm-6">Collecté</dt>
+                            <dd class="col-sm-6">@cagnotte.MontantActuel€</dd>
+
+                            <dt class="col-sm-6">Reste</dt>
+                            <dd class="col-sm-6">@(cagnotte.ObjectifFinancier - cagnotte.MontantActuel)€</dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2 mt-3">
+                    <button @onclick="GoBack" class="btn btn-outline-secondary">? Retour</button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private CagnotteDto? cagnotte;
+    private List<ParticipantDto>? participants;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCagnotte();
+        await LoadParticipants();
+    }
+
+    private async Task LoadCagnotte()
+    {
+        try
+        {
+            cagnotte = await Http.GetFromJsonAsync<CagnotteDto>($"api/Cagnottes/{Id}");
+        }
+        catch { }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadParticipants()
+    {
+        try
+        {
+            participants = await Http.GetFromJsonAsync<List<ParticipantDto>>($"api/Participations/cagnotte/{Id}");
+        }
+        catch { }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/dashboard-gestionnaire");
+    }
+
+    private int GetProgressPercentage(CagnotteDto cagnotte)
+    {
+        if (cagnotte.ObjectifFinancier == 0) return 0;
+        return (int)((cagnotte.MontantActuel / cagnotte.ObjectifFinancier) * 100);
+    }
+
+    private string GetProgressBarClass(CagnotteDto cagnotte)
+    {
+        var percentage = GetProgressPercentage(cagnotte);
+        if (percentage >= 100) return "bg-success";
+        if (percentage >= 75) return "bg-info";
+        if (percentage >= 50) return "bg-warning";
+        return "bg-danger";
+    }
+
+    private string GetStatusBadgeClass(string statut)
+    {
+        return statut switch
+        {
+            "Active" => "success",
+            "Cloturee" => "primary",
+            "Annulee" => "danger",
+            _ => "secondary"
+        };
+    }
+
+    private string GetStatusLabel(string statut)
+    {
+        return statut switch
+        {
+            "Active" => "En cours",
+            "Cloturee" => "Clôturée",
+            "Annulee" => "Annulée",
+            _ => statut
+        };
+    }
+
+    public class ParticipantDto
+    {
+        public Guid Id { get; set; }
+        public string NomComplet { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public decimal Montant { get; set; }
+        public string? Commentaire { get; set; }
+        public DateTime DateParticipation { get; set; }
+    }
+}

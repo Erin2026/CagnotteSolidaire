@@ -1,0 +1,180 @@
+@page "/participate/{CagnotteId:guid}"
+@using CagnotteSolidaire.Web.Services
+@using CagnotteSolidaire.Web.Models
+@inject AuthService AuthService
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Participer - Cagnotte Solidaire</PageTitle>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            @if (cagnotte == null)
+            {
+                <div class="text-center">
+                    <div class="spinner-border" role="status"></div>
+                </div>
+            }
+            else
+            {
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h4>@cagnotte.Nom</h4>
+                        <p class="text-muted">@cagnotte.Description</p>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar" style="width: @GetProgressPercentage()%">
+                                @cagnotte.MontantActuel€ / @cagnotte.ObjectifFinancier€
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5>?? Votre participation</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger">@errorMessage</div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(successMessage))
+                        {
+                            <div class="alert alert-success">
+                                @successMessage
+                                <hr />
+                                <a href="/cagnotte/@CagnotteId" class="btn btn-primary">Voir la cagnotte</a>
+                                <a href="/dashboard-participant" class="btn btn-outline-secondary">Retour au dashboard</a>
+                            </div>
+                        }
+                        else
+                        {
+                            <EditForm Model="@participationModel" OnValidSubmit="@HandleSubmit">
+                                <div class="mb-3">
+                                    <label for="montant" class="form-label">Montant de votre participation (€) *</label>
+                                    <InputNumber id="montant" class="form-control form-control-lg" @bind-Value="participationModel.Montant" />
+                                    <div class="form-text">Indiquez le montant que vous promettez de donner</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="commentaire" class="form-label">Message de soutien (optionnel)</label>
+                                    <InputTextArea id="commentaire" class="form-control" rows="3" @bind-Value="participationModel.Commentaire" 
+                                                  placeholder="Laissez un message d'encouragement..." />
+                                </div>
+
+                                <div class="alert alert-info">
+                                    <strong>?? Information importante :</strong><br />
+                                    Votre participation est une <strong>promesse de don</strong>. Aucun paiement n'est effectué via cette plateforme.
+                                    Si la cagnotte atteint son objectif, vous serez contacté par email pour honorer votre promesse.
+                                </div>
+
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary btn-lg" disabled="@isLoading">
+                                        @if (isLoading)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2"></span>
+                                        }
+                                        Confirmer ma participation
+                                    </button>
+                                    <a href="/cagnotte/@CagnotteId" class="btn btn-outline-secondary">Annuler</a>
+                                </div>
+                            </EditForm>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Guid CagnotteId { get; set; }
+
+    private CagnotteDto? cagnotte;
+    private ParticipationModel participationModel = new();
+    private string? errorMessage;
+    private string? successMessage;
+    private bool isLoading = false;
+    private LoginResponse? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = await AuthService.GetCurrentUserAsync();
+        
+        if (currentUser == null)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        await LoadCagnotte();
+    }
+
+    private async Task LoadCagnotte()
+    {
+        try
+        {
+            cagnotte = await Http.GetFromJsonAsync<CagnotteDto>($"api/Cagnottes/{CagnotteId}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erreur lors du chargement : {ex.Message}";
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (currentUser == null) return;
+
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var request = new
+            {
+                cagnotteId = CagnotteId,
+                participantId = currentUser.UserId,
+                montant = participationModel.Montant,
+                commentaire = participationModel.Commentaire
+            };
+
+            var response = await Http.PostAsJsonAsync("api/Participations", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                successMessage = "? Merci pour votre participation ! Votre promesse de don a été enregistrée.";
+                participationModel = new(); // Reset form
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Erreur : {error}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erreur : {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private int GetProgressPercentage()
+    {
+        if (cagnotte == null || cagnotte.ObjectifFinancier == 0) return 0;
+        return (int)((cagnotte.MontantActuel / cagnotte.ObjectifFinancier) * 100);
+    }
+
+    private class ParticipationModel
+    {
+        public decimal Montant { get; set; } = 10;
+        public string? Commentaire { get; set; }
+    }
+}

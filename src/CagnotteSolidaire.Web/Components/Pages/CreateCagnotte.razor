@@ -1,0 +1,132 @@
+@page "/create-cagnotte"
+@using CagnotteSolidaire.Web.Services
+@using CagnotteSolidaire.Web.Models
+@inject AuthService AuthService
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+
+<PageTitle>Créer une cagnotte - Cagnotte Solidaire</PageTitle>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3>? Créer une nouvelle cagnotte</h3>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+
+                    <EditForm Model="@cagnotteModel" OnValidSubmit="@HandleSubmit">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="mb-3">
+                            <label for="nom" class="form-label">Nom de la cagnotte *</label>
+                            <InputText id="nom" class="form-control" @bind-Value="cagnotteModel.Nom" placeholder="Ex: Achat de matériel sportif" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description *</label>
+                            <InputTextArea id="description" class="form-control" rows="4" @bind-Value="cagnotteModel.Description" 
+                                          placeholder="Décrivez votre projet en détail..." />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="objectif" class="form-label">Objectif financier (€) *</label>
+                            <InputNumber id="objectif" class="form-control" @bind-Value="cagnotteModel.ObjectifFinancier" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="image" class="form-label">URL de l'image (optionnel)</label>
+                            <InputText id="image" class="form-control" @bind-Value="cagnotteModel.ImageUrl" 
+                                      placeholder="https://example.com/image.jpg" />
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg" disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                Créer la cagnotte
+                            </button>
+                            <a href="/dashboard-gestionnaire" class="btn btn-outline-secondary">Annuler</a>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private CreateCagnotteModel cagnotteModel = new();
+    private string? errorMessage;
+    private bool isLoading = false;
+    private LoginResponse? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = await AuthService.GetCurrentUserAsync();
+        
+        if (currentUser == null || currentUser.Role != "Gestionnaire")
+        {
+            Navigation.NavigateTo("/login");
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (currentUser == null) return;
+
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var request = new
+            {
+                nom = cagnotteModel.Nom,
+                description = cagnotteModel.Description,
+                objectifFinancier = cagnotteModel.ObjectifFinancier,
+                imageUrl = cagnotteModel.ImageUrl,
+                gestionnaireId = currentUser.UserId,
+                associationId = Guid.NewGuid() // TODO: Récupérer l'AssociationId du gestionnaire
+            };
+
+            var response = await Http.PostAsJsonAsync("api/Cagnottes", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/dashboard-gestionnaire");
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Erreur lors de la création : {error}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erreur : {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private class CreateCagnotteModel
+    {
+        public string Nom { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public decimal ObjectifFinancier { get; set; }
+        public string? ImageUrl { get; set; }
+    }
+}

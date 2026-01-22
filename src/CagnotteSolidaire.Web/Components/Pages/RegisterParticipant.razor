@@ -1,0 +1,115 @@
+@page "/register-participant"
+@using CagnotteSolidaire.Web.Services
+@using CagnotteSolidaire.Web.Models
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Inscription Participant - Cagnotte Solidaire</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="text-center">Inscription Participant</h3>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @errorMessage
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(successMessage))
+                    {
+                        <div class="alert alert-success" role="alert">
+                            @successMessage
+                        </div>
+                    }
+
+                    <EditForm Model="@registerModel" OnValidSubmit="@HandleRegister">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="mb-3">
+                            <label for="prenom" class="form-label">Prénom</label>
+                            <InputText id="prenom" class="form-control" @bind-Value="registerModel.Prenom" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="nom" class="form-label">Nom</label>
+                            <InputText id="nom" class="form-control" @bind-Value="registerModel.Nom" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <InputText id="email" type="email" class="form-control" @bind-Value="registerModel.Email" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Mot de passe</label>
+                            <InputText id="password" type="password" class="form-control" @bind-Value="registerModel.Password" />
+                            <div class="form-text">Minimum 8 caractères, 1 majuscule, 1 minuscule, 1 chiffre</div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary" disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                }
+                                S'inscrire
+                            </button>
+                        </div>
+                    </EditForm>
+
+                    <hr />
+
+                    <div class="text-center">
+                        <p>Déjà un compte ?</p>
+                        <a href="/login" class="btn btn-outline-secondary">Se connecter</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterParticipantRequest registerModel = new();
+    private string? errorMessage;
+    private string? successMessage;
+    private bool isLoading = false;
+
+    private async Task HandleRegister()
+    {
+        isLoading = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            var success = await AuthService.RegisterParticipantAsync(registerModel);
+            
+            if (success)
+            {
+                successMessage = "Inscription réussie ! Redirection vers la page de connexion...";
+                await Task.Delay(2000);
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                errorMessage = "Erreur lors de l'inscription. Vérifiez vos informations.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Une erreur est survenue : {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

@@ -11,11 +11,11 @@ namespace CagnotteSolidaire.Domain.Entities;
 
 public class Participation(
     int id,
-    int participantId,
-    int cagnotteId,
+    Utilisateur participant,
+    Cagnotte cagnotte,
     decimal montant) : Entity(id)
 {
-    public int ParticipantId { get; } = participantId;
-    public int CagnotteId { get; } = cagnotteId;
+    public Utilisateur Participant { get; } = participant;
+    public Cagnotte Cagnotte { get; } = cagnotte;
     public Montant Montant { get; } = montant;
 }

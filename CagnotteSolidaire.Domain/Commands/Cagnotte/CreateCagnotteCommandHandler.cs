@@ -7,7 +7,7 @@ public class CreateCagnotteCommandHandler(
     ICagnotteCommandRepository repository)
     : IRequestHandler<CreateCagnotteCommand, int>
 {
-    public Task<int> Handle(CreateCagnotteCommand cmd, CancellationToken ct) =>
+    public Task<int> Handle(CreateCagnotteCommand cmd, CancellationToken ct = default) =>
         repository.Upsert(
             new Cagnotte(
                 0,
@@ -15,8 +15,7 @@ public class CreateCagnotteCommandHandler(
                 cmd.Description,
                 cmd.Objectif,
                 cmd.GestionnaireId,
-                cmd.ImageUrl // maintenant dans le constructeur
-            ),
-            ct
+                cmd.ImageUrl
+            )
         );
 }

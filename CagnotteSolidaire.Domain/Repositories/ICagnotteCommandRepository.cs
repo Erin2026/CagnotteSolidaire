@@ -9,6 +9,6 @@ namespace CagnotteSolidaire.Domain.Repositories;
 
 public interface ICagnotteCommandRepository
 {
-    Task<int> Upsert(Cagnotte cagnotte, CancellationToken ct);
-    Task<Cagnotte?> GetById(int id, CancellationToken ct);
+    Task<int> Upsert(Cagnotte cagnotte);
+    Task<Cagnotte?> GetOne(int id);
 }

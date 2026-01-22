@@ -1,22 +1,18 @@
-﻿using CagnotteSolidaire.Domain.Repositories;
+﻿using CagnotteSolidaire.Domain.Entities;
+using CagnotteSolidaire.Domain.Repositories;
 using MediatR;
 
 namespace CagnotteSolidaire.Domain.Commands.Cagnottes;
 
 public class CloturerCagnotteCommandHandler(
-    ICagnotteCommandRepository repository)
+    ICagnotteCommandRepository _repository)
     : IRequestHandler<CloturerCagnotteCommand>
 {
-    public Task Handle(CloturerCagnotteCommand cmd, CancellationToken ct = default)
+    public async Task Handle(CloturerCagnotteCommand command, CancellationToken cancellationToken = default)
     {
-        var cagnotte = repository.GetById(cmd.CagnotteId, ct).Result;
+        Cagnotte cagnotte = await _repository.GetOne(command.CagnotteId)
+            ?? throw new ApplicationException($"Cannot find cagnotte with id '{command.CagnotteId}'");
 
-        if (cagnotte == null)
-            throw new ApplicationException("Cagnotte not found");
-
-        cagnotte.Cloturer(); // Peut throw si objectif non atteint
-
-        return repository.Upsert(cagnotte, ct)
-                         .ContinueWith(_ => Unit.Value, ct);
+        var cloturer = cagnotte.Cloturer();
     }
 }

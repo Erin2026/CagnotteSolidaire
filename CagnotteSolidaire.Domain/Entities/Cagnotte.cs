@@ -26,8 +26,6 @@ public class Cagnotte(
     public int GestionnaireId { get; } = gestionnaireId;
 
     private List<Participation> _participations = new();
-    public IReadOnlyList<Participation> Participations => _participations.AsReadOnly();
-
     public decimal MontantTotal => _participations.Sum(p => p.Montant.Value);
 
     public void AjouterParticipation(Participation participation)
@@ -38,12 +36,14 @@ public class Cagnotte(
         _participations.Add(participation);
     }
 
-    public void Cloturer()
+    public Cagnotte Cloturer()
     {
         if (MontantTotal < Objectif.Value)
             throw new ApplicationException("Objectif not reached");
 
         Statut = StatutCagnotte.Cloturee;
+
+        return this;
     }
 
     public void Annuler()

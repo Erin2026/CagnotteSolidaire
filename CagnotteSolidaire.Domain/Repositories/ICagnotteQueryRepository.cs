@@ -10,7 +10,6 @@ namespace CagnotteSolidaire.Domain.Repositories;
 
 public interface ICagnotteQueryRepository
 {
-    Task<List<CagnottesDTO>> GetByGestionnaire(int gestionnaireId, CancellationToken ct);
-    Task<CagnotteDTO?> GetById(int id, CancellationToken ct);
-    Task<CagnotteDTO> GetOne(int cagnotteId, CancellationToken cancellationToken);
+    Task<List<CagnottesDTO>> GetByGestionnaire(int gestionnaireId);
+    Task<CagnotteDTO> GetOne(int id);
 }

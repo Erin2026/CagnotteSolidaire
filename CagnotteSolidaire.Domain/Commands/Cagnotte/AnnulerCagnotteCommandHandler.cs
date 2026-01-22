@@ -11,15 +11,12 @@ public class AnnulerCagnotteCommandHandler(
         AnnulerCagnotteCommand command,
         CancellationToken cancellationToken)
     {
-        var cagnotte = await repository.GetById(
-            command.CagnotteId,
-            cancellationToken);
-
-        if (cagnotte == null)
-            throw new ApplicationException("Cagnotte not found");
+        var cagnotte = await repository.GetOne(
+            command.CagnotteId)
+        ?? throw new ApplicationException($"Cannot find cagnotte with id '{command.CagnotteId}'");
 
         cagnotte.Annuler();
 
-        await repository.Upsert(cagnotte, cancellationToken);
+        await repository.Upsert(cagnotte);
     }
 }

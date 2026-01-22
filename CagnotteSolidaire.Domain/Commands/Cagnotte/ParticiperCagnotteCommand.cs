@@ -6,7 +6,7 @@ public class ParticiperCagnotteCommand(
     int cagnotteId,
     int participantId,
     decimal montant)
-    : IRequest
+    : IRequest<int>
 {
     public int CagnotteId { get; } = cagnotteId;
     public int ParticipantId { get; } = participantId;

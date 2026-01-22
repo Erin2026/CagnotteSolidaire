@@ -5,31 +5,24 @@ using MediatR;
 namespace CagnotteSolidaire.Domain.Commands.Cagnottes;
 
 public class ParticiperCagnotteCommandHandler(
-    ICagnotteCommandRepository cagnotteRepository,
-    IParticipationCommandRepository participationRepository)
-    : IRequestHandler<ParticiperCagnotteCommand>
+    ICagnotteCommandRepository _cagnotteRepository,
+    IParticipationCommandRepository _participationRepository,
+    IUtilisateurCommandRepository _participantRepository)
+    : IRequestHandler<ParticiperCagnotteCommand, int>
 {
-    public async Task Handle(
+    public async Task<int> Handle(
         ParticiperCagnotteCommand command,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default )
     {
-        var cagnotte = await cagnotteRepository.GetById(
-            command.CagnotteId,
-            cancellationToken);
+        var participant = await _participantRepository.GetOne(command.ParticipantId)
+            ?? throw new ApplicationException($"Cannot find participant with id '{command.ParticipantId}'");
+        var cagnotte = await _cagnotteRepository.GetOne(command.CagnotteId)
+            ?? throw new ApplicationException($"Cannot find cagnotte with id '{command.CagnotteId}'");
 
-        if (cagnotte == null)
-            throw new ApplicationException("Cagnotte not found");
+        Participation participation = new(0, participant, cagnotte, command.Montant);
 
-        var participation = new Participation(
-            0,
-            command.ParticipantId,
-            command.CagnotteId,
-            command.Montant);
-
-        cagnotte.AjouterParticipation(participation);
-
-        await participationRepository.Create(
-            participation,
-            cancellationToken);
+        var participationId = await _participationRepository.Upsert(participation);
+        
+        return participationId;
     }
 }

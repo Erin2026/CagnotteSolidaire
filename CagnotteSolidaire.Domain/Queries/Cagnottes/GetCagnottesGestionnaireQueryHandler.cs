@@ -7,5 +7,5 @@ public class GetCagnottesGestionnaireQueryHandler(ICagnotteQueryRepository repos
     : IRequestHandler<GetCagnottesGestionnaireQuery, List<CagnottesDTO>>
 {
     public Task<List<CagnottesDTO>> Handle(GetCagnottesGestionnaireQuery query, CancellationToken cancellationToken)
-        => repository.GetByGestionnaire(query.GestionnaireId, cancellationToken);
+        => repository.GetByGestionnaire(query.GestionnaireId);
 }

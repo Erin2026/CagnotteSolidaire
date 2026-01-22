@@ -4,18 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using CagnotteSolidaire.Domain.Entities;
+using CagnotteSolidaire.Domain.Queries.Participations;
 
 namespace CagnotteSolidaire.Domain.Queries.Cagnottes;
 
-public class CagnotteDTO : CagnottesDTO
+public class CagnotteDTO(Cagnotte entity) : CagnottesDTO(entity)
 {
-    public CagnotteDTO() { }
-    public CagnotteDTO(Cagnotte entity) : base(entity)
-    {
-        GestionnaireId = entity.GestionnaireId;
-        // Les participations seront ajoutées par le repository
-    }
-
     public int GestionnaireId { get; set; }
-    public List<ParticipationDTO> Participations { get; set; } = new();
+    public List<ParticipationsDTO> Participations { get; set; } = new();
 }

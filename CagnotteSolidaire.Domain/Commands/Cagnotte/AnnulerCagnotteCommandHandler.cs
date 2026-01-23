@@ -9,7 +9,7 @@ public class AnnulerCagnotteCommandHandler(
 {
     public async Task Handle(
         AnnulerCagnotteCommand command,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken= default)
     {
         var cagnotte = await repository.GetOne(
             command.CagnotteId)

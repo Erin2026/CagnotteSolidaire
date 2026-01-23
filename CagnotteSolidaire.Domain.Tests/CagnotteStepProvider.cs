@@ -42,9 +42,6 @@ internal class CagnotteStepProvider
     private CreateCagnotteCommand? _createCagnotteCommand;
     private int _createCagnotteCommandResult;
 
-    private ParticiperCagnotteCommand? _createParticipationCommand;
-    private int? _createParticipationCommandResult;
-
     private ApplicationException? _exception;
 
     #region Given
@@ -84,53 +81,18 @@ internal class CagnotteStepProvider
         
     }
 
-    internal CagnotteStepProvider WhenWeParticipateToCagnotte(int cagnotteId, int participantId, decimal montant)
+    internal CagnotteStepProvider WhenWeCloseCagnotte(int cagnotteId)
     {
-            _createParticipationCommand = new(cagnotteId, participantId,  montant);
-            var handler = new ParticiperCagnotteCommandHandler(_cagnotteRepo, _participationRepo);
+        var command = new CloturerCagnotteCommand(cagnotteId);
 
-            // Recharger la cagnotte
-            _currentCagnotte = _cagnotteRepo.GetCagnotteById(_currentCagnotteId);
-            _lastException = null;
         try
         {
-            _createParticipationCommandResult = handler.Handle(_createParticipationCommand).Result;
+           new CloturerCagnotteCommandHandler(_cagnotteRepo).Handle(command).GetAwaiter().GetResult();
+           
         }
-        catch (AggregateException ex) when (ex.InnerException is ApplicationException appEx)
+        catch (ApplicationException exception)
         {
-            _lastException = appEx;
-        }
-        catch (ApplicationException ex)
-        {
-            _lastException = ex;
-        }
-
-        return this;
-    }
-
-    /// <summary>
-    /// Action : Clôturer la cagnotte courante
-    /// </summary>
-    internal CagnotteStepProvider WhenWeCloseCagnotte()
-    {
-        try
-        {
-            var handler = new CloturerCagnotteCommandHandler(_cagnotteRepo);
-            var command = new CloturerCagnotteCommand(_currentCagnotteId);
-
-            handler.Handle(command, CancellationToken.None).Wait();
-
-            // Recharger la cagnotte
-            _currentCagnotte = _cagnotteRepo.GetCagnotteById(_currentCagnotteId);
-            _lastException = null;
-        }
-        catch (AggregateException ex) when (ex.InnerException is ApplicationException appEx)
-        {
-            _lastException = appEx;
-        }
-        catch (ApplicationException ex)
-        {
-            _lastException = ex;
+            _lastException = exception;
         }
 
         return this;
@@ -139,26 +101,16 @@ internal class CagnotteStepProvider
     /// <summary>
     /// Action : Annuler la cagnotte courante
     /// </summary>
-    internal CagnotteStepProvider WhenWeCancelCagnotte()
+    internal CagnotteStepProvider WhenWeCancelCagnotte(int cagnotteId)
     {
+        var command = new AnnulerCagnotteCommand(cagnotteId);
         try
         {
-            var handler = new AnnulerCagnotteCommandHandler(_cagnotteRepo);
-            var command = new AnnulerCagnotteCommand(_currentCagnotteId);
-
-            handler.Handle(command, CancellationToken.None).Wait();
-
-            // Recharger la cagnotte
-            _currentCagnotte = _cagnotteRepo.GetCagnotteById(_currentCagnotteId);
-            _lastException = null;
+            new AnnulerCagnotteCommandHandler(_cagnotteRepo).Handle(command).GetAwaiter().GetResult();
         }
-        catch (AggregateException ex) when (ex.InnerException is ApplicationException appEx)
+        catch (ApplicationException exception)
         {
-            _lastException = appEx;
-        }
-        catch (ApplicationException ex)
-        {
-            _lastException = ex;
+            _exception = exception;
         }
 
         return this;

@@ -4,15 +4,15 @@ using MediatR;
 
 namespace CagnotteSolidaire.Domain.Commands.Cagnottes;
 
-public class ParticiperCagnotteCommandHandler(
-    ICagnotteCommandRepository _cagnotteRepository,
+public class CreateParticipationCommandHandler(
+     ICagnotteCommandRepository _cagnotteRepository,
     IParticipationCommandRepository _participationRepository,
     IUtilisateurCommandRepository _participantRepository)
     : IRequestHandler<ParticiperCagnotteCommand, int>
 {
     public async Task<int> Handle(
         ParticiperCagnotteCommand command,
-        CancellationToken cancellationToken = default )
+        CancellationToken cancellationToken = default)
     {
         var participant = await _participantRepository.GetOne(command.ParticipantId)
             ?? throw new ApplicationException($"Cannot find participant with id '{command.ParticipantId}'");
@@ -22,7 +22,7 @@ public class ParticiperCagnotteCommandHandler(
         Participation participation = new(0, participant, cagnotte, command.Montant);
 
         var participationId = await _participationRepository.Upsert(participation);
-        
+
         return participationId;
     }
 }

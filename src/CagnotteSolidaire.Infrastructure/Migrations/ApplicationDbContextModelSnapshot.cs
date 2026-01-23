@@ -136,7 +136,6 @@ namespace CagnotteSolidaire.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("SIREN")
-                        .IsRequired()
                         .HasMaxLength(9)
                         .HasColumnType("TEXT");
 
@@ -148,8 +147,7 @@ namespace CagnotteSolidaire.Infrastructure.Migrations
 
                     b.HasIndex("RNA");
 
-                    b.HasIndex("SIREN")
-                        .IsUnique();
+                    b.HasIndex("SIREN");
 
                     b.ToTable("Associations");
                 });

@@ -2,8 +2,11 @@
 @using CagnotteSolidaire.Web.Services
 @inject AuthService AuthService
 @inject NavigationManager Navigation
+@rendermode InteractiveServer
 
 <PageTitle>Connexion - Cagnotte Solidaire</PageTitle>
+
+
 
 <div class="container mt-5">
     <div class="row justify-content-center">
@@ -20,7 +23,7 @@
                         </div>
                     }
 
-                    <EditForm Model="@loginModel" OnValidSubmit="@HandleLogin">
+                    <EditForm Model="@loginModel" OnValidSubmit="@HandleLogin" FormName="LoginForm">
                         <DataAnnotationsValidator />
                         <ValidationSummary />
 
@@ -58,9 +61,10 @@
 </div>
 
 @code {
-    private LoginModel loginModel = new();
-    private string? errorMessage;
-    private bool isLoading = false;
+[SupplyParameterFromForm]
+private LoginModel loginModel { get; set; } = new();
+private string? errorMessage;
+private bool isLoading = false;
 
     private async Task HandleLogin()
     {
@@ -69,18 +73,22 @@
 
         try
         {
-            var success = await AuthService.LoginAsync(loginModel.Email, loginModel.Password);
+            var (success, role) = await AuthService.LoginAsync(loginModel.Email, loginModel.Password);
             
             if (success)
             {
-                var user = await AuthService.GetCurrentUserAsync();
-                if (user?.Role == "Gestionnaire")
+                Console.WriteLine($"[LOGIN PAGE] Connexion réussie, rôle: {role}");
+                
+                // Redirection selon le rôle
+                if (role == "Gestionnaire")
                 {
-                    Navigation.NavigateTo("/dashboard-gestionnaire");
+                    Console.WriteLine($"[LOGIN PAGE] Redirection vers /dashboard-gestionnaire");
+                    Navigation.NavigateTo("/dashboard-gestionnaire", forceLoad: true);
                 }
                 else
                 {
-                    Navigation.NavigateTo("/dashboard-participant");
+                    Console.WriteLine($"[LOGIN PAGE] Redirection vers /dashboard-participant");
+                    Navigation.NavigateTo("/dashboard-participant", forceLoad: true);
                 }
             }
             else
@@ -91,9 +99,11 @@
         catch (Exception ex)
         {
             errorMessage = $"Une erreur est survenue : {ex.Message}";
+            Console.WriteLine($"[LOGIN PAGE] Exception: {ex}");
         }
         finally
         {
+
             isLoading = false;
         }
     }

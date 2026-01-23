@@ -14,7 +14,8 @@ public class GetCagnotteByIdQueryHandler : IRequestHandler<GetCagnotteByIdQuery,
 
     public async Task<CagnotteDto?> Handle(GetCagnotteByIdQuery request, CancellationToken cancellationToken)
     {
-        var cagnotte = await _cagnotteRepository.GetByIdAsync(request.Id);
+        // Utiliser GetWithParticipationsAsync pour calculer les montants et nombres
+        var cagnotte = await _cagnotteRepository.GetWithParticipationsAsync(request.Id);
         
         if (cagnotte == null)
             return null;
@@ -25,13 +26,14 @@ public class GetCagnotteByIdQueryHandler : IRequestHandler<GetCagnotteByIdQuery,
             Nom = cagnotte.Nom,
             Description = cagnotte.Description,
             ObjectifFinancier = cagnotte.ObjectifFinancier,
-            MontantActuel = cagnotte.MontantCollecte,
+            MontantActuel = cagnotte.MontantCollecte,  // Calcule depuis les participations
             ImageUrl = cagnotte.ImageUrl,
             Statut = cagnotte.Statut.ToString(),
             DateCreation = cagnotte.DateCreation,
-            NomAssociation = cagnotte.Gestionnaire?.Email ?? string.Empty, // TODO: Utiliser le nom de l'association
-            NombreParticipants = cagnotte.NombreParticipants
+            NomAssociation = cagnotte.Gestionnaire?.Association?.Nom ?? cagnotte.Gestionnaire?.Email ?? string.Empty,
+            NombreParticipants = cagnotte.NombreParticipants  // Compte les participations
         };
     }
+
 }
 

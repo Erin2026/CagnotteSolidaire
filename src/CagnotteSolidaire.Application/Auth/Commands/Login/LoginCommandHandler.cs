@@ -23,20 +23,28 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginRes
 
     public async Task<Result<LoginResponse>> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
+        // DEBUG: Log de la tentative
+        Console.WriteLine($"[LOGIN] Tentative de connexion pour: {request.Email}");
+        
         // Trouver l'utilisateur
         var user = await _userManager.FindByEmailAsync(request.Email);
         if (user == null)
         {
+            Console.WriteLine($"[LOGIN] Utilisateur introuvable: {request.Email}");
             return Result<LoginResponse>.Failure("Email ou mot de passe incorrect");
         }
+
+        Console.WriteLine($"[LOGIN] Utilisateur trouvé: {user.Email}, Vérification du mot de passe...");
 
         // Vérifier le mot de passe
         var passwordValid = await _userManager.CheckPasswordAsync(user, request.Password);
         
         if (!passwordValid)
         {
+            Console.WriteLine($"[LOGIN] Mot de passe incorrect pour: {request.Email}");
             // Incrémenter le compteur d'échecs
             await _userManager.AccessFailedAsync(user);
+
             
             if (await _userManager.IsLockedOutAsync(user))
             {
@@ -58,11 +66,13 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginRes
             UserId = user.Id,
             Email = user.Email!,
             Role = user.Role.ToString(),
-            NomComplet = user.NomComplet
+            NomComplet = user.NomComplet,
+            AssociationId = user.AssociationId  // Pour les gestionnaires
         };
 
         return Result<LoginResponse>.Success(response);
     }
 }
+
 
 

@@ -16,4 +16,6 @@ public class LoginResponse
     public required string Email { get; init; }
     public required string Role { get; init; }
     public required string NomComplet { get; init; }
+    public Guid? AssociationId { get; init; }  // Pour les gestionnaires
 }
+

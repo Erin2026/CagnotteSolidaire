@@ -13,7 +13,9 @@ public class LoginResponse
     public string Email { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
     public string NomComplet { get; set; } = string.Empty;
+    public Guid? AssociationId { get; set; }  // Pour les gestionnaires
 }
+
 
 public class RegisterParticipantRequest
 {

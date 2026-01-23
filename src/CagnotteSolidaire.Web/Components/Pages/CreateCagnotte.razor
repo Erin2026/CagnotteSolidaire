@@ -14,7 +14,7 @@
         <div class="col-md-8">
             <div class="card">
                 <div class="card-header">
-                    <h3>? Créer une nouvelle cagnotte</h3>
+                    <h3>Créer une nouvelle cagnotte</h3>
                 </div>
                 <div class="card-body">
                     @if (!string.IsNullOrEmpty(errorMessage))
@@ -22,7 +22,7 @@
                         <div class="alert alert-danger">@errorMessage</div>
                     }
 
-                    <EditForm Model="@cagnotteModel" OnValidSubmit="@HandleSubmit">
+                    <EditForm Model="@cagnotteModel" OnValidSubmit="@HandleSubmit" FormName="CreateCagnotteForm">
                         <DataAnnotationsValidator />
                         <ValidationSummary />
 
@@ -66,14 +66,23 @@
 </div>
 
 @code {
-    private CreateCagnotteModel cagnotteModel = new();
-    private string? errorMessage;
-    private bool isLoading = false;
-    private LoginResponse? currentUser;
+[SupplyParameterFromForm]
+private CreateCagnotteModel cagnotteModel { get; set; } = new();
+private string? errorMessage;
+private bool isLoading = false;
+private LoginResponse? currentUser;
 
     protected override async Task OnInitializedAsync()
     {
         currentUser = await AuthService.GetCurrentUserAsync();
+        
+        // Debug : afficher les infos utilisateur
+        if (currentUser != null)
+        {
+            Console.WriteLine($"[CREATE CAGNOTTE] User: {currentUser.Email}");
+            Console.WriteLine($"[CREATE CAGNOTTE] Role: {currentUser.Role}");
+            Console.WriteLine($"[CREATE CAGNOTTE] AssociationId: {currentUser.AssociationId?.ToString() ?? "NULL"}");
+        }
         
         if (currentUser == null || currentUser.Role != "Gestionnaire")
         {
@@ -81,15 +90,32 @@
         }
     }
 
+
     private async Task HandleSubmit()
     {
         if (currentUser == null) return;
+
+        // Verifier que l'utilisateur a une association
+        if (!currentUser.AssociationId.HasValue || currentUser.AssociationId.Value == Guid.Empty)
+        {
+            errorMessage = "Erreur : Vous n'etes pas lie a une association. Veuillez contacter l'administrateur.";
+            isLoading = false;
+            return;
+        }
 
         isLoading = true;
         errorMessage = null;
 
         try
         {
+            // Recuperer le token et l'ajouter aux en-tetes
+            var token = await AuthService.GetTokenAsync();
+            if (!string.IsNullOrEmpty(token))
+            {
+                Http.DefaultRequestHeaders.Authorization = 
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+            
             var request = new
             {
                 nom = cagnotteModel.Nom,
@@ -97,7 +123,7 @@
                 objectifFinancier = cagnotteModel.ObjectifFinancier,
                 imageUrl = cagnotteModel.ImageUrl,
                 gestionnaireId = currentUser.UserId,
-                associationId = Guid.NewGuid() // TODO: Récupérer l'AssociationId du gestionnaire
+                associationId = currentUser.AssociationId.Value  // Utiliser l'AssociationId du gestionnaire
             };
 
             var response = await Http.PostAsJsonAsync("api/Cagnottes", request);
@@ -109,7 +135,7 @@
             else
             {
                 var error = await response.Content.ReadAsStringAsync();
-                errorMessage = $"Erreur lors de la création : {error}";
+                errorMessage = $"Erreur lors de la creation : {error}";
             }
         }
         catch (Exception ex)
@@ -117,6 +143,7 @@
             errorMessage = $"Erreur : {ex.Message}";
         }
         finally
+
         {
             isLoading = false;
         }

@@ -25,21 +25,21 @@ public class CancelCagnotteCommandHandler : IRequestHandler<CancelCagnotteComman
 
     public async Task<Result> Handle(CancelCagnotteCommand request, CancellationToken cancellationToken)
     {
-        // Récupérer la cagnotte
-        var cagnotte = await _cagnotteRepository.GetByIdAsync(request.CagnotteId);
+        // Recuperer la cagnotte avec ses participations pour envoyer les emails
+        var cagnotte = await _cagnotteRepository.GetWithParticipationsAsync(request.CagnotteId);
         
         if (cagnotte == null)
         {
             return Result.Failure("Cagnotte introuvable");
         }
 
-        // Vérifier que l'utilisateur est bien le gestionnaire
+        // Verifier que l'utilisateur est bien le gestionnaire
         if (cagnotte.GestionnaireId != request.GestionnaireId)
         {
-            return Result.Failure("Vous n'êtes pas autorisé à annuler cette cagnotte");
+            return Result.Failure("Vous n'etes pas autorise a annuler cette cagnotte");
         }
 
-        // Vérifier que la cagnotte est active
+        // Verifier que la cagnotte est active
         if (cagnotte.Statut != StatutCagnotte.Active)
         {
             return Result.Failure("Cette cagnotte n'est plus active");

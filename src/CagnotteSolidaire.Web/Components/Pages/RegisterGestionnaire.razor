@@ -10,19 +10,19 @@
         <div class="col-md-10">
             <div class="card">
                 <div class="card-header">
-                    <h3>?? Inscription Gestionnaire (Association)</h3>
+                    <h3>Inscription Gestionnaire (Association)</h3>
                 </div>
                 <div class="card-body">
                     @if (currentStep == 1)
                     {
                         <h5>Étape 1/2 : Rechercher votre association</h5>
-                        <p class="text-muted">Recherchez votre association dans le département 68 via l'API du Journal Officiel</p>
+                        <p class="text-muted">Recherchez votre association via l'API du Journal Officiel</p>
 
                         <div class="mb-3">
                             <label for="search" class="form-label">Nom de l'association ou SIREN</label>
                             <div class="input-group">
                                 <input type="text" id="search" class="form-control" @bind="searchTerm" 
-                                       placeholder="Saisissez le nom de votre association..." />
+                                       placeholder="Ex: Association Culturelle ou 123456789" />
                                 <button @onclick="SearchAssociations" class="btn btn-primary" disabled="@isSearching">
                                     @if (isSearching)
                                     {
@@ -30,9 +30,15 @@
                                     }
                                     else
                                     {
-                                        <span>?? Rechercher</span>
+                                        <span>Rechercher</span>
                                     }
                                 </button>
+                            </div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="searchAllFrance" @bind="searchAllFrance">
+                                <label class="form-check-label" for="searchAllFrance">
+                                    Rechercher dans toute la France (pas seulement le département 68)
+                                </label>
                             </div>
                         </div>
 
@@ -40,6 +46,7 @@
                         {
                             <div class="alert alert-danger">@searchError</div>
                         }
+
 
                         @if (associations != null && associations.Any())
                         {
@@ -80,7 +87,7 @@
                             <div class="alert alert-danger">@registerError</div>
                         }
 
-                        <EditForm Model="@userModel" OnValidSubmit="@HandleRegister">
+                        <EditForm Model="@userModel" OnValidSubmit="@HandleRegister" FormName="RegisterGestionnaireForm">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="prenom" class="form-label">Prénom *</label>
@@ -113,7 +120,7 @@
                                     S'inscrire
                                 </button>
                                 <button @onclick="BackToSearch" type="button" class="btn btn-outline-secondary">
-                                    ? Retour à la recherche
+                                    Retour à la recherche
                                 </button>
                             </div>
                         </EditForm>
@@ -130,34 +137,49 @@
 </div>
 
 @code {
-    private int currentStep = 1;
-    private string searchTerm = string.Empty;
-    private bool isSearching = false;
-    private bool searchCompleted = false;
-    private bool isRegistering = false;
-    private string? searchError;
-    private string? registerError;
+private int currentStep = 1;
+private string searchTerm = string.Empty;
+private bool searchAllFrance = false;
+private bool isSearching = false;
+private bool searchCompleted = false;
+private bool isRegistering = false;
+private string? searchError;
+private string? registerError;
 
-    private List<AssociationSearchDto>? associations;
-    private AssociationSearchDto? selectedAssociation;
-    private UserRegistrationModel userModel = new();
+private List<AssociationSearchDto>? associations;
+private AssociationSearchDto? selectedAssociation;
+    
+[SupplyParameterFromForm]
+private UserRegistrationModel userModel { get; set; } = new();
 
-    private async Task SearchAssociations()
+
+private async Task SearchAssociations()
+{
+    if (string.IsNullOrWhiteSpace(searchTerm)) return;
+
+    isSearching = true;
+    searchError = null;
+    searchCompleted = false;
+
+    try
     {
-        if (string.IsNullOrWhiteSpace(searchTerm)) return;
-
-        isSearching = true;
-        searchError = null;
-        searchCompleted = false;
-
-        try
-        {
-            associations = await Http.GetFromJsonAsync<List<AssociationSearchDto>>(
-                $"api/Associations/search?searchTerm={Uri.EscapeDataString(searchTerm)}&departement=68");
-            searchCompleted = true;
-        }
-        catch (Exception ex)
-        {
+        var departement = searchAllFrance ? "" : "68";
+        Console.WriteLine($"[REGISTER] Recherche: '{searchTerm}', Département: '{departement}'");
+            
+        var url = string.IsNullOrEmpty(departement)
+            ? $"api/Associations/search?searchTerm={Uri.EscapeDataString(searchTerm)}"
+            : $"api/Associations/search?searchTerm={Uri.EscapeDataString(searchTerm)}&departement={departement}";
+            
+        Console.WriteLine($"[REGISTER] URL: {url}");
+            
+        associations = await Http.GetFromJsonAsync<List<AssociationSearchDto>>(url);
+            
+        Console.WriteLine($"[REGISTER] Résultats: {associations?.Count ?? 0}");
+            
+        searchCompleted = true;
+    }
+    catch (Exception ex)
+    {
             searchError = $"Erreur lors de la recherche : {ex.Message}";
         }
         finally
@@ -187,25 +209,29 @@
 
         try
         {
+            // Remplir les champs null avec des valeurs par defaut
             var request = new
             {
                 email = userModel.Email,
                 password = userModel.Password,
                 nom = userModel.Nom,
                 prenom = userModel.Prenom,
-                associationNom = selectedAssociation.Nom,
-                siren = selectedAssociation.SIREN,
-                rna = selectedAssociation.RNA,
-                adresse = selectedAssociation.Adresse,
-                codePostal = selectedAssociation.CodePostal,
-                ville = selectedAssociation.Ville,
+                associationNom = selectedAssociation.Nom ?? "Association",
+                siren = string.IsNullOrEmpty(selectedAssociation.SIREN) ? null : selectedAssociation.SIREN,
+                rna = string.IsNullOrEmpty(selectedAssociation.RNA) ? null : selectedAssociation.RNA,
+                adresse = string.IsNullOrEmpty(selectedAssociation.Adresse) ? "Non renseignee" : selectedAssociation.Adresse,
+                codePostal = string.IsNullOrEmpty(selectedAssociation.CodePostal) ? "00000" : selectedAssociation.CodePostal,
+                ville = string.IsNullOrEmpty(selectedAssociation.Ville) ? "Non renseignee" : selectedAssociation.Ville,
                 departement = "68"
             };
+            
+            Console.WriteLine($"[REGISTER] Envoi inscription avec SIREN: {request.siren ?? "NULL"}");
 
             var response = await Http.PostAsJsonAsync("api/Auth/register/gestionnaire", request);
             
             if (response.IsSuccessStatusCode)
             {
+
                 Navigation.NavigateTo("/login");
             }
             else

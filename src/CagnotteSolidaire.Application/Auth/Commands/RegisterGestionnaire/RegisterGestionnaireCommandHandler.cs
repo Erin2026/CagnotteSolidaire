@@ -25,25 +25,30 @@ public class RegisterGestionnaireCommandHandler : IRequestHandler<RegisterGestio
 
     public async Task<Result<string>> Handle(RegisterGestionnaireCommand request, CancellationToken cancellationToken)
     {
-        // Vérifier si l'email existe déjà
+        // Verifier si l'email existe deja
         var existingUser = await _userManager.FindByEmailAsync(request.Email);
         if (existingUser != null)
         {
-            return Result<string>.Failure("Cet email est déjà utilisé");
+            return Result<string>.Failure("Cet email est deja utilise");
         }
 
-        // Vérifier si l'association existe déjà (par SIREN)
-        var existingAssociation = await _associationRepository.GetBySIRENAsync(request.SIREN);
+        // Verifier si l'association existe deja (par SIREN si disponible)
+        Association? existingAssociation = null;
+        
+        if (!string.IsNullOrEmpty(request.SIREN))
+        {
+            existingAssociation = await _associationRepository.GetBySIRENAsync(request.SIREN);
+        }
         
         Association association;
         if (existingAssociation == null)
         {
-            // Créer la nouvelle association
+            // Creer la nouvelle association
             association = new Association
             {
                 Id = Guid.NewGuid(),
                 Nom = request.AssociationNom,
-                SIREN = request.SIREN,
+                SIREN = request.SIREN,  // Peut etre null
                 RNA = request.RNA,
                 Departement = request.Departement,
                 Adresse = request.Adresse,
@@ -60,7 +65,7 @@ public class RegisterGestionnaireCommandHandler : IRequestHandler<RegisterGestio
             association = existingAssociation;
         }
 
-        // Créer le nouvel utilisateur gestionnaire
+        // Creer le nouvel utilisateur gestionnaire
         var user = new ApplicationUser
         {
             UserName = request.Email,
@@ -77,10 +82,10 @@ public class RegisterGestionnaireCommandHandler : IRequestHandler<RegisterGestio
         if (!result.Succeeded)
         {
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            return Result<string>.Failure($"Erreur lors de la création du compte : {errors}");
+            return Result<string>.Failure($"Erreur lors de la creation du compte : {errors}");
         }
 
-        // Ajouter le rôle Gestionnaire
+        // Ajouter le role Gestionnaire
         await _userManager.AddToRoleAsync(user, "Gestionnaire");
 
         return Result<string>.Success(user.Id);

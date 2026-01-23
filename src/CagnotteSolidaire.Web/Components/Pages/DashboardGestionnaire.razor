@@ -12,9 +12,9 @@
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>?? Mes Cagnottes</h2>
+        <h2>Mes Cagnottes</h2>
         <div>
-            <a href="/create-cagnotte" class="btn btn-primary me-2">? Créer une cagnotte</a>
+            <a href="/create-cagnotte" class="btn btn-primary me-2">Créer une cagnotte</a>
             <button @onclick="Logout" class="btn btn-outline-danger">Déconnexion</button>
         </div>
     </div>
@@ -100,7 +100,7 @@
                             </div>
                         </div>
                         <div class="card-footer text-muted">
-                            Créée le @cagnotte.DateCreation.ToShortDateString()
+                            Crée le @cagnotte.DateCreation.ToShortDateString()
                         </div>
                     </div>
                 </div>
@@ -135,6 +135,14 @@
 
         try
         {
+            // Recuperer le token et l'ajouter aux en-tetes
+            var token = await AuthService.GetTokenAsync();
+            if (!string.IsNullOrEmpty(token))
+            {
+                Http.DefaultRequestHeaders.Authorization = 
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+            
             cagnottes = await Http.GetFromJsonAsync<List<CagnotteDto>>($"api/Cagnottes/gestionnaire");
         }
         catch (Exception ex)
@@ -147,45 +155,77 @@
         }
     }
 
+
     private async Task CloseCagnotte(Guid cagnotteId)
     {
-        if (!await JSRuntime.InvokeAsync<bool>("confirm", "Êtes-vous sûr de vouloir clôturer cette cagnotte ? Un email sera envoyé aux participants."))
+        if (!await JSRuntime.InvokeAsync<bool>("confirm", "Etes-vous sur de vouloir cloturer cette cagnotte ? Un email sera envoye aux participants."))
             return;
 
         try
         {
+            // Recuperer le token et l'ajouter aux en-tetes
+            var token = await AuthService.GetTokenAsync();
+            if (!string.IsNullOrEmpty(token))
+            {
+                Http.DefaultRequestHeaders.Authorization = 
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+            
             var response = await Http.PostAsync($"api/Cagnottes/{cagnotteId}/close", null);
+            
+            Console.WriteLine($"[CLOSE] Status: {response.StatusCode}");
+            
             if (response.IsSuccessStatusCode)
             {
                 await LoadCagnottes();
+                errorMessage = null; // Effacer l'erreur si succès
             }
             else
             {
-                errorMessage = "Erreur lors de la clôture de la cagnotte";
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[CLOSE] Error: {errorContent}");
+                errorMessage = $"Erreur lors de la cloture : {errorContent}";
             }
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[CLOSE] Exception: {ex.Message}");
             errorMessage = $"Erreur : {ex.Message}";
         }
     }
 
+
     private async Task CancelCagnotte(Guid cagnotteId)
     {
-        if (!await JSRuntime.InvokeAsync<bool>("confirm", "Êtes-vous sûr de vouloir annuler cette cagnotte ? Un email sera envoyé aux participants."))
+        if (!await JSRuntime.InvokeAsync<bool>("confirm", "Etes-vous sur de vouloir annuler cette cagnotte ? Un email sera envoye aux participants."))
             return;
 
         try
         {
+            // Recuperer le token et l'ajouter aux en-tetes
+            var token = await AuthService.GetTokenAsync();
+            if (!string.IsNullOrEmpty(token))
+            {
+                Http.DefaultRequestHeaders.Authorization = 
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+            
             var response = await Http.PostAsync($"api/Cagnottes/{cagnotteId}/cancel", null);
+            
+            Console.WriteLine($"[CANCEL] Status: {response.StatusCode}");
+            
             if (response.IsSuccessStatusCode)
             {
                 await LoadCagnottes();
+                errorMessage = null; // Effacer l'erreur si succès
             }
             else
             {
-                errorMessage = "Erreur lors de l'annulation de la cagnotte";
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[CANCEL] Error: {errorContent}");
+                errorMessage = $"Erreur lors de l'annulation : {errorContent}";
             }
+
         }
         catch (Exception ex)
         {

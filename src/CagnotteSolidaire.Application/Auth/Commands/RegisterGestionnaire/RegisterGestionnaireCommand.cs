@@ -10,9 +10,9 @@ public record RegisterGestionnaireCommand : ICommand<Result<string>>
     public required string Nom { get; init; }
     public required string Prenom { get; init; }
     
-    // Données de l'association (depuis API JO)
+    // Donnees de l'association (depuis API JO)
     public required string AssociationNom { get; init; }
-    public required string SIREN { get; init; }
+    public string? SIREN { get; init; }  // Optionnel car certaines associations n'ont pas de SIREN
     public string? RNA { get; init; }
     public string? Adresse { get; init; }
     public string? CodePostal { get; init; }

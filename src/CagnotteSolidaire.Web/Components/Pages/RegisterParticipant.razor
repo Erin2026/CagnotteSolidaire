@@ -28,7 +28,7 @@
                         </div>
                     }
 
-                    <EditForm Model="@registerModel" OnValidSubmit="@HandleRegister">
+                    <EditForm Model="@registerModel" OnValidSubmit="@HandleRegister" FormName="RegisterParticipantForm">
                         <DataAnnotationsValidator />
                         <ValidationSummary />
 
@@ -77,10 +77,11 @@
 </div>
 
 @code {
-    private RegisterParticipantRequest registerModel = new();
-    private string? errorMessage;
-    private string? successMessage;
-    private bool isLoading = false;
+[SupplyParameterFromForm]
+private RegisterParticipantRequest registerModel { get; set; } = new();
+private string? errorMessage;
+private string? successMessage;
+private bool isLoading = false;
 
     private async Task HandleRegister()
     {

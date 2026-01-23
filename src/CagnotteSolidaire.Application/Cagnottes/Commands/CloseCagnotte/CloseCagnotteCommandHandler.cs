@@ -25,33 +25,33 @@ public class CloseCagnotteCommandHandler : IRequestHandler<CloseCagnotteCommand,
 
     public async Task<Result> Handle(CloseCagnotteCommand request, CancellationToken cancellationToken)
     {
-        // Récupérer la cagnotte avec ses participations
-        var cagnotte = await _cagnotteRepository.GetByIdAsync(request.CagnotteId);
+        // Recuperer la cagnotte avec ses participations pour calculer l'objectif
+        var cagnotte = await _cagnotteRepository.GetWithParticipationsAsync(request.CagnotteId);
         
         if (cagnotte == null)
         {
             return Result.Failure("Cagnotte introuvable");
         }
 
-        // Vérifier que l'utilisateur est bien le gestionnaire
+        // Verifier que l'utilisateur est bien le gestionnaire
         if (cagnotte.GestionnaireId != request.GestionnaireId)
         {
-            return Result.Failure("Vous n'êtes pas autorisé à clôturer cette cagnotte");
+            return Result.Failure("Vous n'etes pas autorise a cloturer cette cagnotte");
         }
 
-        // Vérifier que la cagnotte est active
+        // Verifier que la cagnotte est active
         if (cagnotte.Statut != StatutCagnotte.Active)
         {
             return Result.Failure("Cette cagnotte n'est plus active");
         }
 
-        // Vérifier que l'objectif est atteint
+        // Verifier que l'objectif est atteint
         if (!cagnotte.ObjectifAtteint)
         {
             return Result.Failure("L'objectif n'est pas atteint. Utilisez l'annulation si vous souhaitez fermer la cagnotte.");
         }
 
-        // Clôturer la cagnotte
+        // Cloturer la cagnotte
         cagnotte.Statut = StatutCagnotte.Cloturee;
         cagnotte.DateCloture = DateTime.UtcNow;
 

@@ -1,8 +1,11 @@
 @page "/cagnotte/{Id:guid}"
 @using CagnotteSolidaire.Web.Models
+@using CagnotteSolidaire.Web.Services
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject AuthService AuthService
 @rendermode InteractiveServer
+
 
 <PageTitle>Détails cagnotte - Cagnotte Solidaire</PageTitle>
 
@@ -67,15 +70,25 @@
 
                         @if (cagnotte.Statut == "Active")
                         {
-                            <div class="d-grid gap-2 mt-4">
-                                <a href="/participate/@cagnotte.Id" class="btn btn-primary btn-lg">
-                                    ?? Participer à cette cagnotte
-                                </a>
-                            </div>
+                            @if (isOwner)
+                            {
+                                <div class="alert alert-info mt-4">
+                                    Vous etes le gestionnaire de cette cagnotte. Vous ne pouvez pas y participer.
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="d-grid gap-2 mt-4">
+                                    <a href="/participate/@cagnotte.Id" class="btn btn-primary btn-lg">
+                                        Participer a cette cagnotte
+                                    </a>
+                                </div>
+                            }
                         }
+
                     </div>
                     <div class="card-footer text-muted">
-                        Créée le @cagnotte.DateCreation.ToShortDateString()
+                        Créé le @cagnotte.DateCreation.ToShortDateString()
                     </div>
                 </div>
 
@@ -83,7 +96,7 @@
                 {
                     <div class="card">
                         <div class="card-header">
-                            <h5>?? Participants (@participants.Count)</h5>
+                            <h5>Participants (@participants.Count)</h5>
                         </div>
                         <div class="card-body">
                             <div class="list-group">
@@ -110,7 +123,7 @@
             <div class="col-md-4">
                 <div class="card">
                     <div class="card-header">
-                        <h5>?? Informations</h5>
+                        <h5>Informations</h5>
                     </div>
                     <div class="card-body">
                         <dl class="row">
@@ -140,7 +153,7 @@
                 </div>
 
                 <div class="d-grid gap-2 mt-3">
-                    <button @onclick="GoBack" class="btn btn-outline-secondary">? Retour</button>
+                    <button @onclick="GoBack" class="btn btn-outline-secondary">Retour</button>
                 </div>
             </div>
         </div>
@@ -148,23 +161,52 @@
 </div>
 
 @code {
-    [Parameter]
-    public Guid Id { get; set; }
+[Parameter]
+public Guid Id { get; set; }
 
-    private CagnotteDto? cagnotte;
-    private List<ParticipantDto>? participants;
-    private bool isLoading = true;
+private CagnotteDto? cagnotte;
+private List<ParticipantDto>? participants;
+private bool isLoading = true;
+private bool isOwner = false;
 
-    protected override async Task OnInitializedAsync()
+protected override async Task OnInitializedAsync()
+{
+    await LoadCagnotte();
+    await LoadParticipants();
+    await CheckIfOwner();
+}
+
+private async Task CheckIfOwner()
+{
+    try
     {
-        await LoadCagnotte();
-        await LoadParticipants();
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        if (currentUser != null && cagnotte != null)
+        {
+            // Verifier si l'utilisateur est un gestionnaire ET si c'est sa cagnotte
+            isOwner = currentUser.Role == "Gestionnaire" && 
+                     currentUser.AssociationId.HasValue &&
+                     cagnotte.NomAssociation == currentUser.Email; // Temporaire, a ameliorer
+        }
     }
+    catch
+    {
+        isOwner = false;
+    }
+}
 
     private async Task LoadCagnotte()
     {
         try
         {
+            // Recuperer le token et l'ajouter aux en-tetes
+            var token = await AuthService.GetTokenAsync();
+            if (!string.IsNullOrEmpty(token))
+            {
+                Http.DefaultRequestHeaders.Authorization = 
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+            
             cagnotte = await Http.GetFromJsonAsync<CagnotteDto>($"api/Cagnottes/{Id}");
         }
         catch { }
@@ -178,10 +220,19 @@
     {
         try
         {
+            // Recuperer le token et l'ajouter aux en-tetes
+            var token = await AuthService.GetTokenAsync();
+            if (!string.IsNullOrEmpty(token))
+            {
+                Http.DefaultRequestHeaders.Authorization = 
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+            
             participants = await Http.GetFromJsonAsync<List<ParticipantDto>>($"api/Participations/cagnotte/{Id}");
         }
         catch { }
     }
+
 
     private void GoBack()
     {

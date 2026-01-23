@@ -9,4 +9,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/CagnotteSolidaire.Application.Tests/CagnotteSolidaire.Application.Tests.csproj" />
   </Folder>
+  <Folder Name="/Éléments de solution/">
+    <File Path="README.txt" />
+  </Folder>
 </Solution>

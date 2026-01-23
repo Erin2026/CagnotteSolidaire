@@ -1,6 +1,5 @@
 using CagnotteSolidaire.Web.Components;
 using CagnotteSolidaire.Web.Services;
-using Blazored.LocalStorage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,25 +7,35 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Blazored LocalStorage
-builder.Services.AddBlazoredLocalStorage();
-
-// HttpClient configuré pour l'API
-builder.Services.AddScoped<AuthenticationMessageHandler>();
-builder.Services.AddScoped(sp =>
+// Désactiver l'antiforgery pour le développement/test
+builder.Services.AddAntiforgery(options =>
 {
-    var handler = sp.GetRequiredService<AuthenticationMessageHandler>();
-    handler.InnerHandler = new HttpClientHandler();
-    
-    var httpClient = new HttpClient(handler)
-    {
-        BaseAddress = new Uri(builder.Configuration["ApiUrl"] ?? "http://localhost:5163")
-    };
-    return httpClient;
+    options.SuppressXFrameOptionsHeader = true;
 });
 
-// Services
+// HttpClient via IHttpClientFactory
+builder.Services.AddHttpClient("ApiClient", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["ApiUrl"] ?? "http://localhost:5163");
+});
+
+// HttpClient par défaut pour les pages Blazor qui injectent HttpClient directement
+builder.Services.AddScoped(sp =>
+{
+    var factory = sp.GetRequiredService<IHttpClientFactory>();
+    return factory.CreateClient("ApiClient");
+});
+
+// Services - AuthStateService en Singleton pour conserver le cache
+builder.Services.AddSingleton<AuthStateService>();
+
+// AuthService en Scoped (peut utiliser ProtectedSessionStorage)
 builder.Services.AddScoped<AuthService>();
+
+
+
+
+
 
 var app = builder.Build();
 
@@ -34,11 +43,11 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
+    app.UseHttpsRedirection(); // HTTPS seulement en production
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-app.UseHttpsRedirection();
+
 
 app.UseAntiforgery();
 
@@ -47,4 +56,6 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+
 

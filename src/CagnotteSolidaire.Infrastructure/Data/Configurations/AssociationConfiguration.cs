@@ -19,8 +19,9 @@ public class AssociationConfiguration : IEntityTypeConfiguration<Association>
             .HasMaxLength(300);
 
         builder.Property(a => a.SIREN)
-            .IsRequired()
+            .IsRequired(false)  // SIREN est maintenant optionnel
             .HasMaxLength(9);
+
 
         builder.Property(a => a.RNA)
             .HasMaxLength(10);
@@ -39,8 +40,9 @@ public class AssociationConfiguration : IEntityTypeConfiguration<Association>
             .HasMaxLength(200);
 
         // Index pour recherche rapide
-        builder.HasIndex(a => a.SIREN).IsUnique();
+        builder.HasIndex(a => a.SIREN);  // Index simple, pas unique (car SIREN peut être null)
         builder.HasIndex(a => a.RNA);
+
 
         // Relations
         builder.HasMany(a => a.Gestionnaires)

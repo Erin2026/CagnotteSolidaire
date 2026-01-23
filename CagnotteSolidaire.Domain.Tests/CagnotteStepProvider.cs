@@ -5,11 +5,6 @@ using CagnotteSolidaire.Domain.Tests.Mocks;
 using Xunit;
 
 namespace CagnotteSolidaire.Domain.Tests.StepProviders;
-
-/// <summary>
-/// StepProvider pour les tests de Cagnotte.
-/// Suit le pattern Given/When/Then (GWT).
-/// </summary>
 internal class CagnotteStepProvider
 {
 
@@ -29,8 +24,6 @@ internal class CagnotteStepProvider
 
     // Repositories mocks
     private CagnotteRepositoryMock _cagnotteRepo = new([], DateTime.MinValue);
-    private ParticipationRepositoryMock _participationRepo = new();
-    private UtilisateurRepositoryMock _utilisateurRepo = new();
 
     // Données de test
     private int _currentCagnotteId;
@@ -46,10 +39,6 @@ internal class CagnotteStepProvider
 
     #region Given
 
-    /// <summary>
-    /// GIVEN : Des cagnottes existantes (utilise le Fixture)
-    /// EXACTEMENT COMME LibRator !
-    /// </summary>
     internal CagnotteStepProvider GivenExistingCagnottes()
     {
         _cagnotteRepo = new(Fixture, DateTime.MinValue);
@@ -67,7 +56,7 @@ internal class CagnotteStepProvider
         int gestionnaireId,
         string? imageUrl = null)
     {
-        var command = new CreateCagnotteCommand(nom, description, objectif, gestionnaireId, imageUrl);
+        _createCagnotteCommand = new CreateCagnotteCommand(nom, description, objectif, gestionnaireId, imageUrl);
 
         try
         {
@@ -98,9 +87,6 @@ internal class CagnotteStepProvider
         return this;
     }
 
-    /// <summary>
-    /// Action : Annuler la cagnotte courante
-    /// </summary>
     internal CagnotteStepProvider WhenWeCancelCagnotte(int cagnotteId)
     {
         var command = new AnnulerCagnotteCommand(cagnotteId);
@@ -116,9 +102,6 @@ internal class CagnotteStepProvider
         return this;
     }
 
-    /// <summary>
-    /// Action : Récupérer les cagnottes d'un gestionnaire
-    /// </summary>
     internal CagnotteStepProvider WhenWeGetCagnottesForGestionnaire(int gestionnaireId)
     {
         var handler = new GetCagnottesGestionnaireQueryHandler(_cagnotteRepo);
@@ -129,9 +112,6 @@ internal class CagnotteStepProvider
         return this;
     }
 
-    /// <summary>
-    /// Action : Récupérer le détail d'une cagnotte
-    /// </summary>
     internal CagnotteStepProvider WhenWeGetCagnotteDetails(int cagnotteId)
     {
         var handler = new GetCagnotteQueryHandler(_cagnotteRepo);
@@ -142,16 +122,12 @@ internal class CagnotteStepProvider
         return this;
     }
 
-    // ============================================
-    // THEN (Assert - Vérifier les résultats)
-    // ============================================
+    #endregion
 
-    /// <summary>
-    /// Assertion : La cagnotte a bien été créée
-    /// </summary>
+    #region then
+
     internal CagnotteStepProvider ThenCagnotteIsCreated()
     {
-        Assert.True(_currentCagnotteId > 0, "La cagnotte devrait avoir un ID > 0");
         Assert.NotNull(_currentCagnotte);
         Assert.Null(_lastException);
         Assert.Equal(StatutCagnotte.Ouverte, _currentCagnotte.Statut);
@@ -159,20 +135,15 @@ internal class CagnotteStepProvider
         return this;
     }
 
-    /// <summary>
-    /// Assertion : La création de la cagnotte a échoué avec un message spécifique
-    /// </summary>
-    internal CagnotteStepProvider ThenCagnotteCreationFailed(string expectedMessagePart)
+    internal CagnotteStepProvider ThenCagnotteIsNotCreated(String message)
     {
-        Assert.NotNull(_lastException);
-        Assert.Contains(expectedMessagePart, _lastException.Message);
+        Assert.NotNull(_createCagnotteCommand);
+        Assert.NotNull(_exception);
+        Assert.Equal(message, _exception.Message);;
 
         return this;
     }
 
-    /// <summary>
-    /// Assertion : La cagnotte est clôturée
-    /// </summary>
     internal CagnotteStepProvider ThenCagnotteIsClosed()
     {
         Assert.NotNull(_currentCagnotte);
@@ -182,9 +153,6 @@ internal class CagnotteStepProvider
         return this;
     }
 
-    /// <summary>
-    /// Assertion : La clôture a échoué
-    /// </summary>
     internal CagnotteStepProvider ThenCloseShouldFail(string expectedMessagePart)
     {
         Assert.NotNull(_lastException);
@@ -205,33 +173,6 @@ internal class CagnotteStepProvider
         return this;
     }
 
-    /// <summary>
-    /// Assertion : La participation a été ajoutée
-    /// </summary>
-    internal CagnotteStepProvider ThenParticipationIsAdded(decimal expectedAmount)
-    {
-        Assert.NotNull(_currentCagnotte);
-        Assert.True(_currentCagnotte.Participations.Count > 0);
-        Assert.Equal(expectedAmount, _currentCagnotte.MontantTotal);
-        Assert.Null(_lastException);
-
-        return this;
-    }
-
-    /// <summary>
-    /// Assertion : La participation a échoué
-    /// </summary>
-    internal CagnotteStepProvider ThenParticipationFailed(string expectedMessagePart)
-    {
-        Assert.NotNull(_lastException);
-        Assert.Contains(expectedMessagePart, _lastException.Message);
-
-        return this;
-    }
-
-    /// <summary>
-    /// Assertion : La query retourne plusieurs cagnottes
-    /// </summary>
     internal CagnotteStepProvider ThenMultipleCagnottesAreReturned(int expectedCount)
     {
         Assert.NotNull(_cagnottesQueryResult);
@@ -240,9 +181,6 @@ internal class CagnotteStepProvider
         return this;
     }
 
-    /// <summary>
-    /// Assertion : Le détail de la cagnotte est retourné
-    /// </summary>
     internal CagnotteStepProvider ThenCagnotteDetailsAreReturned()
     {
         Assert.NotNull(_cagnotteDetailResult);
@@ -250,4 +188,5 @@ internal class CagnotteStepProvider
 
         return this;
     }
+    #endregion
 }

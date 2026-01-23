@@ -25,7 +25,7 @@ public class Cagnotte(
     public StatutCagnotte Statut { get; private set; } = StatutCagnotte.Ouverte;
     public int GestionnaireId { get; } = gestionnaireId;
 
-    private List<Participation> _participations = new();
+    private List<Participation> _participations = [];
     public decimal MontantTotal => _participations.Sum(p => p.Montant.Value);
 
     public void AjouterParticipation(Participation participation)
